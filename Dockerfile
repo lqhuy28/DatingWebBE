@@ -15,6 +15,6 @@ WORKDIR /app
 # Copy the generated WAR file from the build stage
 COPY --from=build /app/target/*.war drcomputer.war
 
-EXPOSE 8080
+EXPOSE 8088
 
 ENTRYPOINT ["java", "-jar", "drcomputer.war"]
