@@ -6,10 +6,10 @@ COPY .mvn/ .mvn
 COPY mvnw .
 COPY pom.xml .
 
-# Chuyển đổi định dạng dòng và cấp quyền thực thi
-RUN apk add --no-cache dos2unix && dos2unix mvnw && chmod +x mvnw
+RUN chmod +x mvnw
 
-RUN ./mvnw dependency:go-offline -B
+# Chạy lệnh build và hiển thị log
+RUN ./mvnw clean package -DskipTests -e -X
 
 COPY src ./src
 
