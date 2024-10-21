@@ -1,20 +1,16 @@
-FROM openjdk:17-jdk-alpine
-
+FROM maven:3-openjdk-17 AS build
 WORKDIR /app
 
-COPY .mvn/ .mvn
-COPY mvnw .
-COPY pom.xml .
+COPY . .
+RUN mvn clean package -DskipTests
 
-RUN chmod +x mvnw
 
-# Chạy lệnh build và hiển thị log
-RUN ./mvnw clean package -DskipTests -e -X
+# Run stage
 
-COPY src ./src
+FROM openjdk:17-jdk-slim
+WORKDIR /app
 
-RUN ./mvnw clean package -DskipTests
+COPY --from=build /app/target/DrComputer-0.0.1-SNAPSHOT.war drcomputer.war
+EXPOSE 8080 
 
-COPY target/*.jar app.jar
-
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["java","-jar","drcomputer.war"]
