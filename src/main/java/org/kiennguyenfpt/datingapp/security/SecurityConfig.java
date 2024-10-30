@@ -23,6 +23,7 @@ import java.util.List;
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
+
     private final UserRepository userRepository;
 
     public SecurityConfig(UserRepository userRepository) {
@@ -39,45 +40,25 @@ public class SecurityConfig {
         return authenticationConfiguration.getAuthenticationManager();
     }
 
-    /*
-    @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http.csrf(csrf -> csrf.disable())
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/v1/auth/**").permitAll()
-                        //.requestMatchers("/api/v1/profiles").permitAll()
-                        .requestMatchers("/api/v1/profiles/me").authenticated()
-                        .anyRequest().authenticated()
-                )
-                .sessionManagement(session -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-                );
-
-        http.addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
-
-        return http.build();
-    }
-
-     */
-
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http.csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource())) // Thêm cấu hình CORS
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/v1/auth/**").permitAll() // Cho phép tất cả truy cập vào auth
-                        .requestMatchers("/api/v1/profiles/me").authenticated() // Cần xác thực
-                        .requestMatchers("/api/v1/users/update-profile").authenticated() // Cần xác thực
-                        .requestMatchers("/api/v1/swipes/swipe").authenticated() // Cần xác thực
-                        .requestMatchers("/api/v1/matches").authenticated() // Cần xác thực
-                        .requestMatchers("/api/v1/messages/send").authenticated() // Cần xác thực
-                        .requestMatchers("/api/v1/messages/match/{matchId}").authenticated() // Cần xác thực
-                        .requestMatchers("/ws/**").permitAll() // Cho phép truy cập công khai đến WebSocket endpoint
-                        .requestMatchers("/api/v1/admin/**").hasRole("Admin") // Chỉ cho phép người dùng có vai trò ADMIN truy cập
-                        .anyRequest().authenticated() // Tất cả các yêu cầu khác đều cần xác thực
+                .requestMatchers("/api/v1/auth/**").permitAll() // Cho phép tất cả truy cập vào auth
+                .requestMatchers("/api/v1/payment/**").permitAll()
+                .requestMatchers("/api/v1/profiles/me").authenticated() // Cần xác thực
+                .requestMatchers("/api/v1/users/update-profile").authenticated() // Cần xác thực
+                .requestMatchers("/api/v1/swipes/swipe").authenticated() // Cần xác thực
+                .requestMatchers("/api/v1/matches").authenticated() // Cần xác thực
+                .requestMatchers("/api/v1/messages/send").authenticated() // Cần xác thực
+                .requestMatchers("/api/v1/messages/match/{matchId}").authenticated() // Cần xác thực
+                .requestMatchers("/ws/**").permitAll() // Cho phép truy cập công khai đến WebSocket endpoint
+                .requestMatchers("/api/v1/admin/**").hasRole("Admin") // Chỉ cho phép người dùng có vai trò ADMIN truy cập
+                .anyRequest().authenticated() // Tất cả các yêu cầu khác đều cần xác thực
                 )
                 .sessionManagement(session -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS) // Không giữ phiên
+                .sessionCreationPolicy(SessionCreationPolicy.STATELESS) // Không giữ phiên
                 );
 
         http.addFilterBefore(jwtRequestFilter(), UsernamePasswordAuthenticationFilter.class);

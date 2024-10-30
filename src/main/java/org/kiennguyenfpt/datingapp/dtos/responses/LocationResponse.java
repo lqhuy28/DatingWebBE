@@ -10,15 +10,11 @@ import lombok.Setter;
 @AllArgsConstructor
 @NoArgsConstructor
 public class LocationResponse {
-    private String name;
 
-    private String city;
-
-    private String country;
+    private String address;
 
     private double latitude;
 
     private double longitude;
 
-    private String formatted;
 }

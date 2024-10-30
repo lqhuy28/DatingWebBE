@@ -9,6 +9,7 @@ import org.kiennguyenfpt.datingapp.responses.CommonResponse;
 import org.kiennguyenfpt.datingapp.security.JwtUtil;
 import org.kiennguyenfpt.datingapp.services.LocationService;
 import org.kiennguyenfpt.datingapp.services.PhotoService;
+import org.kiennguyenfpt.datingapp.services.UserLocationService;
 import org.kiennguyenfpt.datingapp.services.UserService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -41,20 +42,20 @@ public class UserController {
     private final JwtUtil jwtUtil;
     private final ProfileMapper profileMapper;
 
-    private final LocationService locationService;
+    private final UserLocationService userLocationService;
 
     public UserController(
             UserService userService,
             PhotoService photoService,
             JwtUtil jwtUtil,
             ProfileMapper profileMapper,
-            LocationService locationService
+            UserLocationService userLocationService
     ) {
         this.userService = userService;
         this.photoService = photoService;
         this.jwtUtil = jwtUtil;
         this.profileMapper = profileMapper;
-        this.locationService = locationService;
+        this.userLocationService = userLocationService;
     }
 
     private ResponseEntity<CommonResponse<Map<String, Object>>> handleUpdateProfile(
@@ -171,7 +172,7 @@ public class UserController {
             }
             response.setStatus(HttpStatus.OK.value());
             response.setMessage("Get location successfully!");
-            response.setData(locationService.getCurrentLocation(latitude, longitude));
+            response.setData(userLocationService.getCurrentLocation(latitude, longitude));
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             response.setStatus(HttpStatus.INTERNAL_SERVER_ERROR.value());

@@ -39,36 +39,6 @@ public class ProfileServiceImpl implements ProfileService {
         return profileRepository.findByUser_UserId(userId);
     }
 
-//    @Override
-//    public Profile getRandomUserProfileExcludingCurrentUser(String email) {
-//        try {
-//            Profile currentUserProfile = profileRepository.findByUser_Email(email);
-//            if (currentUserProfile == null) {
-//                logger.warning("Current user profile not found");
-//                throw new IllegalStateException("Current user profile not found");
-//            }
-//
-//            Long currentUserId = currentUserProfile.getUser().getUserId();
-//
-//            // Lấy tất cả các profile chưa được swipe bởi current user
-//            List<Profile> profiles = profileRepository.findAllByUser_UserIdNotInAndUser_UserIdNot(
-//                    profileRepository.findSwipedUserIdsByUserId(currentUserId),
-//                    currentUserId
-//            );
-//
-//            if (profiles.isEmpty()) {
-//                logger.info("No other profiles found");
-//                return null;
-//            }
-//
-//            Random random = new Random();
-//            return profiles.get(random.nextInt(profiles.size()));
-//        } catch (Exception e) {
-//            logger.severe("Error in getRandomUserProfileExcludingCurrentUser: " + e.getMessage());
-//            throw e;
-//        }
-//    }
-
     @Override
     public List<Profile> getAllProfilesExcludingCurrentUserAndSwiped(String email) {
         try {

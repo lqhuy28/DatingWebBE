@@ -5,13 +5,24 @@ import org.kiennguyenfpt.datingapp.dtos.responses.SwipeResponse;
 import org.kiennguyenfpt.datingapp.entities.Like;
 import org.kiennguyenfpt.datingapp.entities.Swipe;
 import org.kiennguyenfpt.datingapp.entities.User;
+import org.kiennguyenfpt.datingapp.entities.UserSubscription;
+import org.kiennguyenfpt.datingapp.entities.*;
+import org.kiennguyenfpt.datingapp.enums.SubscriptionStatus;
+import org.kiennguyenfpt.datingapp.exceptions.AccessDeniedException;
 import org.kiennguyenfpt.datingapp.exceptions.AlreadyMatchedException;
 import org.kiennguyenfpt.datingapp.repositories.LikeRepository;
 import org.kiennguyenfpt.datingapp.repositories.SwipeRepository;
 import org.kiennguyenfpt.datingapp.repositories.UserRepository;
+import org.kiennguyenfpt.datingapp.repositories.UserSubscriptionRepository;
+import org.kiennguyenfpt.datingapp.repositories.*;
 import org.kiennguyenfpt.datingapp.services.MatchService;
 import org.kiennguyenfpt.datingapp.services.SwipeService;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class SwipeServiceImpl implements SwipeService {
@@ -19,12 +30,18 @@ public class SwipeServiceImpl implements SwipeService {
     private final UserRepository userRepository;
     private final MatchService matchService;
     private final LikeRepository likeRepository;
+    private final UserSubscriptionRepository userSubscriptionRepository;
+    private final ProfileRepository profileRepository;
 
-    public SwipeServiceImpl(SwipeRepository swipeRepository, UserRepository userRepository, MatchService matchService, LikeRepository likeRepository) {
+
+
+    public SwipeServiceImpl(SwipeRepository swipeRepository, UserRepository userRepository, MatchService matchService, LikeRepository likeRepository, ProfileRepository profileRepository, UserSubscriptionRepository userSubscriptionRepository) {
         this.swipeRepository = swipeRepository;
         this.userRepository = userRepository;
         this.matchService = matchService;
         this.likeRepository = likeRepository;
+        this.profileRepository = profileRepository;
+        this.userSubscriptionRepository = userSubscriptionRepository;
     }
 
     @Override
@@ -53,6 +70,23 @@ public class SwipeServiceImpl implements SwipeService {
             throw new AlreadyMatchedException("You have already matched with this user.");
         }
 
+        // Lấy số lượt like tối đa cho gói của người dùng
+        UserSubscription userSubscription = userSubscriptionRepository.findActiveSubscriptionByUserId(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User subscription not found"));
+        SubscriptionPlan subscriptionPlan = userSubscription.getSubscriptionPlan();
+
+        // Kiểm tra package của người dùng, giống API likedMe
+        if (subscriptionPlan.getPlanId() == 1 && !Boolean.TRUE.equals(subscriptionPlan.getHasLikeLimit())) {
+            throw new AccessDeniedException("Your subscription plan does not allow using the swipe feature.", HttpStatus.FORBIDDEN);
+        }
+
+        int dailySwipeMax = subscriptionPlan.getMaxDailySwipes() != null ? subscriptionPlan.getMaxDailySwipes() : Integer.MAX_VALUE;
+
+        // Kiểm tra nếu đã vượt quá số lượt like tối đa cho gói
+        if (user.getDailySwipeCount() >= dailySwipeMax) {
+            throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "You have exceeded the maximum number of likes for today.");
+        }
+
         // Logic to handle swipe action
         boolean isMatch = false;
 
@@ -65,6 +99,8 @@ public class SwipeServiceImpl implements SwipeService {
 
         // Nếu là like, lưu vào bảng Like
         if (isLike) {
+            user.setDailySwipeCount(user.getDailySwipeCount() + 1);
+            userRepository.save(user);
             // Kiểm tra xem người dùng đã like targetUser trước đó chưa
             Like existingLike = likeRepository.findByUserAndProfile(user, targetUser.getProfile());
             if (existingLike == null) {
@@ -75,8 +111,6 @@ public class SwipeServiceImpl implements SwipeService {
                 likeRepository.save(like);
             }
 
-
-
             // Kiểm tra nếu target user đã like user trước đó (reciprocal like)
             Swipe reciprocalSwipe = swipeRepository.findByUser_UserIdAndTargetUser_UserId(targetUserId, userId);
             if (reciprocalSwipe != null && reciprocalSwipe.isLike()) {
@@ -84,9 +118,36 @@ public class SwipeServiceImpl implements SwipeService {
                 matchService.createMatch(user, targetUser);
                 isMatch = true;
             }
-        }else {
-
         }
         return new SwipeResponse(isMatch);
     }
+
+
+    @Override
+    public List<Profile> getAllLikedProfilesExcludingCurrentUser(Long userId) throws AccessDeniedException {
+        // Lấy hồ sơ của người dùng hiện tại dựa trên userId
+        Profile currentUserProfile = profileRepository.findByUser_UserId(userId);
+        if (currentUserProfile == null) {
+            throw new IllegalArgumentException("User profile not found with userId " + userId);
+        }
+
+        // Kiểm tra package của người dùng hiện tại
+        UserSubscription userSubscription = userSubscriptionRepository.findByUser_UserIdAndStatus(userId, SubscriptionStatus.ACTIVE);
+        if (userSubscription != null && userSubscription.getSubscriptionPlan().getPlanId() == 1) {
+            throw new AccessDeniedException("Users are not allowed to access the list of liked profiles!", null);
+        }
+
+        // Lấy danh sách các userId đã match với người dùng hiện tại
+        List<Long> matchedUserIds = matchService.getMatchesForUser(userId)
+                .stream()
+                .map(match -> match.getUser2().getUserId())
+                .collect(Collectors.toList());
+
+        // Lấy tất cả các profile đã like, trừ những profile đã match
+        return swipeRepository.findAllLikedProfilesExcludingCurrentUser(userId)
+                .stream()
+                .filter(profile -> !matchedUserIds.contains(profile.getUser().getUserId()))
+                .collect(Collectors.toList());
+    }
+
 }

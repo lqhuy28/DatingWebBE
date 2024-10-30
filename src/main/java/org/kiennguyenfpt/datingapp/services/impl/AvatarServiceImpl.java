@@ -13,20 +13,5 @@ import java.util.UUID;
 
 @Service
 public class AvatarServiceImpl implements AvatarService {
-    @Override
-    public String uploadAvatar(Profile profile, MultipartFile file) throws IOException {
-        if (file.isEmpty()) {
-            throw new IllegalArgumentException("File is empty");
-        }
 
-        Bucket bucket = StorageClient.getInstance().bucket();
-        String fileName = UUID.randomUUID().toString() + "-" + file.getOriginalFilename();
-        Blob blob = bucket.create(fileName, file.getBytes(), file.getContentType());
-        return blob.getMediaLink();
-    }
-
-    @Override
-    public String selectAvatarFromExisting(Profile profile, String imageUrl) {
-        return "";
-    }
 }

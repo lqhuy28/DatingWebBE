@@ -26,6 +26,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 import org.kiennguyenfpt.datingapp.enums.UserStatus;
 
 import java.sql.Timestamp;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -88,6 +89,10 @@ public class User {
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private List<UserRole> userRoles; // Danh sách vai trò của người dùng
 
+    @OneToOne
+    @JoinColumn(name = "location_id")
+    private UserLocation userLocation;
+
     @ManyToMany
     @JoinTable(
             name = "user_friends",
@@ -134,6 +139,12 @@ public class User {
     public boolean isSecondLogin() {
         return loginCount == 1;
     }
+
+    @Column
+    private int dailySwipeCount; // Số lần quẹt trong ngày
+
+    @Column
+    private LocalDate lastSwipeReset = LocalDate.now(); // Ngày cuối cùng reset số lần quẹt
 
     @Override
     public boolean equals(Object o) {

@@ -64,15 +64,6 @@ public class Profile {
     private String avatar;
     private String phone;
 
-    @PostLoad
-    @PostPersist
-    @PostConstruct
-    private void setAvatar() {
-        if (photos != null && !photos.isEmpty()) {
-            this.avatar = photos.get(0).getUrl();
-        }
-    }
-
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Timestamp createdAt;
@@ -91,12 +82,5 @@ public class Profile {
 
     @OneToMany(mappedBy = "profile", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<ProfileVerification> verifications; // Danh sách xác minh của hồ sơ
-
-    public List<Photo> getPhotos() {
-        if (photos == null) {
-            photos = new ArrayList<>();
-        }
-        return photos;
-    }
 
 }

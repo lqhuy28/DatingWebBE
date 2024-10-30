@@ -16,7 +16,7 @@ public class FirebaseConfig {
     public FirebaseApp initializeFirebase() throws IOException {
         FileInputStream serviceAccount =
 //                new FileInputStream("D:\\ki 8\\datingwebfpt-firebase-adminsdk-grvca-d65d9a7351.json"); //doanh
-                //new FileInputStream("D:\\Kien FPT\\datingwebfpt-firebase-adminsdk-grvca-d65d9a7351.json"); //kien
+//                new FileInputStream("D:\\Kien FPT\\datingwebfpt-firebase-adminsdk-grvca-d65d9a7351.json"); //kien
                 new FileInputStream("C:\\Users\\Acer\\Downloads\\datingwebfpt-firebase-adminsdk-grvca-d65d9a7351.json"); //huy
         FirebaseOptions options = new FirebaseOptions.Builder()
                 .setCredentials(GoogleCredentials.fromStream(serviceAccount))

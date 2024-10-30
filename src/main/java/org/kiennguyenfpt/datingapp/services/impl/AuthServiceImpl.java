@@ -1,14 +1,15 @@
 package org.kiennguyenfpt.datingapp.services.impl;
 
 import org.kiennguyenfpt.datingapp.dtos.responses.LoginSuccessfulResponse;
-import org.kiennguyenfpt.datingapp.entities.Role;
-import org.kiennguyenfpt.datingapp.entities.User;
-import org.kiennguyenfpt.datingapp.entities.UserRole;
+import org.kiennguyenfpt.datingapp.entities.*;
 import org.kiennguyenfpt.datingapp.enums.ROLE;
+import org.kiennguyenfpt.datingapp.enums.SubscriptionStatus;
 import org.kiennguyenfpt.datingapp.enums.UserStatus;
 import org.kiennguyenfpt.datingapp.exceptions.InvalidEmailException;
 import org.kiennguyenfpt.datingapp.repositories.RoleRepository;
+import org.kiennguyenfpt.datingapp.repositories.SubscriptionPlanRepository;
 import org.kiennguyenfpt.datingapp.repositories.UserRoleRepository;
+import org.kiennguyenfpt.datingapp.repositories.UserSubscriptionRepository;
 import org.kiennguyenfpt.datingapp.responses.CommonResponse;
 import org.kiennguyenfpt.datingapp.security.JwtUtil;
 import org.kiennguyenfpt.datingapp.services.AuthService;
@@ -23,6 +24,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
 
 
 @Service
@@ -40,6 +43,8 @@ public class AuthServiceImpl implements AuthService {
     private final UserRoleRepository userRoleRepository;
 
     private final JwtUtil jwtUtil;
+    private final SubscriptionPlanRepository subscriptionPlanRepository;
+    private final UserSubscriptionRepository userSubscriptionRepository;
 
     public AuthServiceImpl(
             BCryptPasswordEncoder passwordEncoder,
@@ -47,14 +52,16 @@ public class AuthServiceImpl implements AuthService {
             UserService userService,
             JwtUtil jwtUtil,
             RoleRepository roleRepository,
-            UserRoleRepository userRoleRepository
-    ) {
+            UserRoleRepository userRoleRepository,
+            SubscriptionPlanRepository subscriptionPlanRepository, UserSubscriptionRepository userSubscriptionRepository) {
         this.passwordEncoder = passwordEncoder;
         this.emailService = emailService;
         this.userService = userService;
         this.jwtUtil = jwtUtil;
         this.roleRepository = roleRepository;
         this.userRoleRepository = userRoleRepository;
+        this.subscriptionPlanRepository = subscriptionPlanRepository;
+        this.userSubscriptionRepository = userSubscriptionRepository;
     }
 
     @Override
@@ -73,10 +80,14 @@ public class AuthServiceImpl implements AuthService {
             // Lưu UserRole
             UserRole userRole = new UserRole();
             userRole.setRole(getUserRole());
-            userRole.setUser(user);
+            userRole.setUser(savedUser);
             userRoleRepository.save(userRole);
 
-            sendEmail(user, randomPassword);
+            // ** Tự động gán gói Free cho user **
+            assignFreePlanToUser(savedUser);
+
+            // Gửi email xác nhận với mật khẩu ngẫu nhiên
+            sendEmail(savedUser, randomPassword);
             return savedUser;
         } catch (Exception e) {
             logger.error("Error during registration: {}", e.getMessage(), e);
@@ -213,6 +224,24 @@ public class AuthServiceImpl implements AuthService {
                 "</html>";
 
         emailService.sendEmail(user.getEmail(), subject, htmlContent);
+    }
+
+    // Phương thức để gán gói Free cho user
+    private void assignFreePlanToUser(User user) {
+        // Lấy thông tin gói Free từ database
+        SubscriptionPlan freePlan = subscriptionPlanRepository.findByName("FREE").orElseThrow(
+                () -> new IllegalStateException("Free plan not found")
+        );
+
+        // Tạo một bản ghi UserSubscription cho người dùng
+        UserSubscription userSubscription = new UserSubscription();
+        userSubscription.setUser(user); // Sử dụng đối tượng User thay vì userId
+        userSubscription.setSubscriptionPlan(freePlan);
+        userSubscription.setStatus(SubscriptionStatus.ACTIVE); // Sử dụng Enum thay vì chuỗi
+        userSubscription.setStartDate(LocalDateTime.now());
+        userSubscription.setEndDate(null);
+        // Lưu UserSubscription vào database
+        userSubscriptionRepository.save(userSubscription);
     }
 
     private Role getUserRole() {

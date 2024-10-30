@@ -50,13 +50,10 @@ public class LocationServiceImpl implements LocationService {
         JsonNode propertiesNode = featuresNode.path("properties");
 
         // Lấy thông tin cần thiết
-        String name = propertiesNode.path("name").asText();
-        String city = propertiesNode.path("city").asText();
-        String country = propertiesNode.path("country").asText();
+        String address = propertiesNode.path("formatted").asText();
         double latitude = propertiesNode.path("lat").asDouble();
         double longitude = propertiesNode.path("lon").asDouble();
-        String formatted = propertiesNode.path("formatted").asText();
 
-        return new LocationResponse(name, city, country, latitude, longitude, formatted);
+        return new LocationResponse(address, latitude, longitude);
     }
 }

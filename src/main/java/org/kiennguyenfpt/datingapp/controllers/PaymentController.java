@@ -1,38 +1,43 @@
 package org.kiennguyenfpt.datingapp.controllers;
 
-import org.kiennguyenfpt.datingapp.responses.CommonResponse;
-import org.kiennguyenfpt.datingapp.services.PaymentService;
+import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.kiennguyenfpt.datingapp.dtos.PaymentDTO;
+import org.kiennguyenfpt.datingapp.dtos.responses.ResponseObject;
+import org.kiennguyenfpt.datingapp.services.PaymentVNPayService;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("api/v1/payments")
-@CrossOrigin
+@RequestMapping("/api/v1/payment")
+@Slf4j
+@RequiredArgsConstructor
 public class PaymentController {
-    private final PaymentService paymentService;
-
-    public PaymentController(PaymentService paymentService) {
-        this.paymentService = paymentService;
-    }
-
-    @PostMapping("/process")
-    public ResponseEntity<CommonResponse<String>> processPayment(@RequestParam Long userId, @RequestParam Double amount) {
-        CommonResponse<String> response = new CommonResponse<>();
+    private final PaymentVNPayService paymentVNPayService;
+    @GetMapping("/vn-pay")
+    public ResponseObject<PaymentDTO.VNPayResponse> pay(HttpServletRequest request) {
         try {
-            paymentService.processPayment(userId, amount);
-            response.setStatus(HttpStatus.OK.value());
-            response.setMessage("Payment processed successfully.");
-            return ResponseEntity.ok(response);
+            return new ResponseObject<>(HttpStatus.OK, "Success", paymentVNPayService.createVnPayPayment(request));
         } catch (Exception e) {
-            response.setStatus(HttpStatus.INTERNAL_SERVER_ERROR.value());
-            response.setMessage("Error processing payment: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+            log.error("Error processing payment request", e);
+            return new ResponseObject<>(HttpStatus.INTERNAL_SERVER_ERROR, "Error processing payment", null);
         }
     }
 
+    @GetMapping("/vn-pay-callback")
+    public ResponseObject<PaymentDTO.VNPayResponse> payCallbackHandler(HttpServletRequest request) {
+        String status = request.getParameter("vnp_ResponseCode");
+        if (status.equals("00")) {
+            return new ResponseObject<>(HttpStatus.OK, "Success", PaymentDTO.VNPayResponse.builder()
+                    .code("00")
+                    .message("Success")
+                    .paymentUrl("")
+                    .build());
+        } else {
+            return new ResponseObject<>(HttpStatus.BAD_REQUEST, "Failed", null);
+        }
+    }
 }

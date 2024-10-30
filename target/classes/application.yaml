@@ -54,7 +54,13 @@ cloud:
   storage:
     bucket-name: gs://datingapp-f4ecb.appspot.com
 
-
-
-
-#haha
+#payment
+payment:
+  vnPay:
+    payUrl: https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
+    tmnCode: 27APOTHS
+    secretKey: 002W55MOJX8C5BLTEIDQ15JWXWRSYW11
+    returnUrl: http://localhost:8080/api/v1/payment/vn-pay-callback
+    version: 2.1.0
+    command: pay
+    orderType: other

@@ -1,10 +1,21 @@
 package org.kiennguyenfpt.datingapp.services.impl;
 
 import org.kiennguyenfpt.datingapp.dtos.requests.UpdateProfileRequest;
+import org.kiennguyenfpt.datingapp.dtos.responses.AdminUserResponse;
+import org.kiennguyenfpt.datingapp.dtos.responses.NearlyUserResponse;
+import org.kiennguyenfpt.datingapp.entities.Payment;
 import org.kiennguyenfpt.datingapp.entities.Photo;
 import org.kiennguyenfpt.datingapp.entities.Profile;
+import org.kiennguyenfpt.datingapp.entities.SubscriptionPlan;
 import org.kiennguyenfpt.datingapp.entities.User;
+import org.kiennguyenfpt.datingapp.entities.UserLocation;
+import org.kiennguyenfpt.datingapp.entities.UserSubscription;
+import org.kiennguyenfpt.datingapp.enums.SubscriptionPlanType;
+import org.kiennguyenfpt.datingapp.enums.SubscriptionStatus;
+import org.kiennguyenfpt.datingapp.repositories.PaymentRepository;
+import org.kiennguyenfpt.datingapp.repositories.SubscriptionPlanRepository;
 import org.kiennguyenfpt.datingapp.repositories.UserRepository;
+import org.kiennguyenfpt.datingapp.repositories.UserSubscriptionRepository;
 import org.kiennguyenfpt.datingapp.services.PhotoService;
 import org.kiennguyenfpt.datingapp.services.UserService;
 import org.slf4j.Logger;
@@ -13,7 +24,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class UserServiceImpl implements UserService {
@@ -21,11 +35,27 @@ public class UserServiceImpl implements UserService {
     private static final Logger logger = LoggerFactory.getLogger(UserServiceImpl.class);
 
     private final UserRepository userRepository;
+
+    private final UserSubscriptionRepository userSubscriptionRepository;
+
+    private final SubscriptionPlanRepository subscriptionPlanRepository;
+
     private final PhotoService photoService;
 
-    public UserServiceImpl(UserRepository userRepository, PhotoService photoService) {
+    private final PaymentRepository paymentRepository;
+
+    public UserServiceImpl(
+            final UserRepository userRepository,
+            final PhotoService photoService,
+            final UserSubscriptionRepository userSubscriptionRepository,
+            final SubscriptionPlanRepository subscriptionPlanRepository,
+            final PaymentRepository paymentRepository
+    ) {
         this.userRepository = userRepository;
         this.photoService = photoService;
+        this.userSubscriptionRepository = userSubscriptionRepository;
+        this.subscriptionPlanRepository = subscriptionPlanRepository;
+        this.paymentRepository = paymentRepository;
     }
 
     @Override
@@ -44,6 +74,11 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    public List<AdminUserResponse> searchAdminUsers() {
+        return userRepository.searchAdminUsers();
+    }
+
+    @Override
     public int lockOrUnLockUser(Long id) {
         return userRepository.lockOrUnLockUser(id);
     }
@@ -51,6 +86,56 @@ public class UserServiceImpl implements UserService {
     @Override
     public User findById(Long id) {
         return userRepository.getReferenceById(id);
+    }
+
+    @Override
+    public List<NearlyUserResponse> findNearbyUsers(UserLocation currentLocation, double rangeInMeters) {
+        return userRepository.findNearbyUsers(currentLocation.getLatitude(), currentLocation.getLongitude(), rangeInMeters);
+    }
+
+    @Override
+    public AdminUserResponse getUserById(Long id) {
+        return userRepository.getUserById(id);
+    }
+
+    @Override
+    public void changeUserPackage(Long userId, Long planId) {
+        // 1. Update tất cả các bản ghi cũ của userId về EXPIRED
+        userSubscriptionRepository.updateStatusToExpiredByUserId(userId, "EXPIRED");
+
+        // 2. Tạo bản ghi mới cho UserSubscription
+        UserSubscription newSubscription = new UserSubscription();
+        newSubscription.setUser(userRepository.getOne(userId));
+        newSubscription.setStatus(SubscriptionStatus.ACTIVE);
+
+        // 3. Lấy đối tượng subscription plan dựa trên planId và set vào UserSubscription
+        SubscriptionPlan subscriptionPlan = subscriptionPlanRepository.findById(planId)
+                .orElseThrow(() -> new IllegalArgumentException("Invalid plan ID"));
+        newSubscription.setSubscriptionPlan(subscriptionPlan);
+
+        // 4. Set ngày bắt đầu là ngày hiện tại
+        LocalDateTime startDate = LocalDateTime.now();
+        newSubscription.setStartDate(startDate);
+
+        // 5. Xác định end_date dựa trên planId
+        if (SubscriptionPlanType.TRIAL.value() == planId) {
+            newSubscription.setEndDate(startDate.plusDays(7));
+        } else if (SubscriptionPlanType.PREMIUM.value() == planId) {
+            newSubscription.setEndDate(startDate.plusDays(30));
+        } else if (SubscriptionPlanType.FREE.value() == planId) {
+            newSubscription.setEndDate(null); // Không có end_date nếu planId là 1
+        }
+        if (SubscriptionPlanType.FREE.value() != planId) {
+            Payment payment = new Payment();
+            payment.setUser(userRepository.getOne(userId));
+            payment.setDate(startDate);
+
+            Optional<SubscriptionPlan> optional = subscriptionPlanRepository.findById(planId);
+            optional.ifPresent(plan -> payment.setAmount(plan.getPrice()));
+            paymentRepository.save(payment);
+        }
+        // 6. Lưu bản ghi mới xuống cơ sở dữ liệu
+        userSubscriptionRepository.save(newSubscription);
     }
 
     /*
@@ -139,6 +224,9 @@ public class UserServiceImpl implements UserService {
             for (Photo photo : photos) {
                 photo.setProfile(profile); // Ensure the profile field is set
                 photoService.savePhoto(photo); // Save each photo to persist changes
+            }
+            if (profile.getPhotos() == null) {
+                profile.setPhotos(new ArrayList<>());
             }
 
             // Update the existing photos list instead of replacing it

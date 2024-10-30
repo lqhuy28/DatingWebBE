@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2024-10-21T00:51:23+0700",
+    date = "2024-10-29T01:10:37+0700",
     comments = "version: 1.5.5.Final, compiler: javac, environment: Java 17.0.12 (Amazon.com Inc.)"
 )
 @Component
@@ -58,6 +58,7 @@ public class ProfileMapperImpl implements ProfileMapper {
         simpleProfileResponse.setName( profile.getName() );
         simpleProfileResponse.setAge( profile.getAge() );
         simpleProfileResponse.setBio( profile.getBio() );
+        simpleProfileResponse.setPhotos( mapPhotosToUrls( profile.getPhotos() ) );
 
         return simpleProfileResponse;
     }
