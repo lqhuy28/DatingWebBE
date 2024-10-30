@@ -1,9 +1,16 @@
-FROM openjdk:17-slim
-LABEL authors="TRUNG KIEN"
-
-# Set the working directory
+FROM maven:3-openjdk-17 AS build
 WORKDIR /app
 
-COPY target/DatingApp-0.0.1-SNAPSHOT.jar app.jar
+COPY . .
+RUN mvn clean package -DskipTests
 
-ENTRYPOINT ["java", "-jar", "app.jar"]
+
+# Run stage
+
+FROM openjdk:17-jdk-slim
+WORKDIR /app
+
+COPY --from=build /app/target/DrComputer-0.0.1-SNAPSHOT.war drcomputer.war
+EXPOSE 8080 
+
+ENTRYPOINT ["java","-jar","drcomputer.war"]
